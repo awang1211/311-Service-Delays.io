@@ -19,6 +19,8 @@ We ask: **which neighborhoods wait longer than similar requests citywide, and wh
 | --- | --- |
 | 311 Service Requests (2024; Heat/Hot Water, Plumbing, Rodent) | [NYC Open Data](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9) |
 | 2020 Neighborhood Tabulation Areas (NTAs) | [NYC Open Data](https://data.cityofnewyork.us/d/9nt8-h7nd) |
+| American Community Survey 2020-2024 5-year (income, race/ethnicity, renter share), census tracts | [U.S. Census API](https://www.census.gov/data/developers/data-sets/acs-5year.html) |
+| 2020 Census Tract to NTA equivalency | [NYC Open Data](https://data.cityofnewyork.us/d/hm78-6dwm) |
 
 Preparation (see `output/cleaning_report.csv` after running):
 
@@ -47,6 +49,7 @@ All GIS operations (spatial join, spatial weights, hot spot analysis, choropleth
 - **Upper Manhattan is the only significant slow cluster** after FDR correction (Harlem South and Harlem North).
 - **East Harlem (North)** has the largest extra wait among high-volume neighborhoods: +0.59 days (median), with 65% of requests slower than the citywide norm. The gap holds (+0.61 days) after removing its 10 busiest buildings. Plumbing requests wait +2.35 days longer than similar requests citywide.
 - Neighborhoods that wait less than similar requests are concentrated in the Bronx.
+- Renter-heavy neighborhoods tend to wait longer (Spearman rho +0.47 with the ML benchmark, +0.13 with the simple benchmark). "No access" closures are more common where a larger share of residents is Black (+0.21). Links with income and other groups depend on the method. All are descriptive, not causal.
 
 ## Limitations
 
@@ -64,6 +67,7 @@ python nyc311_delay_gap.py     # download, clean, compute gaps, hot spots -> out
 python prepare_map_data.py     # per-complaint-type layer -> output/nta_by_type.geojson
 python make_web_map.py         # interactive map -> output/lat_long_wait_map.html
 python geoai_model.py          # ML benchmark + comparison -> output/ml_summary.txt
+CENSUS_KEY=... python census_compare.py   # ACS demographics comparison -> output/acs_summary.txt (free key: api.census.gov/data/key_signup.html)
 ```
 
 ## Next steps
