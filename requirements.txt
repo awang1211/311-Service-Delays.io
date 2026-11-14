@@ -4,3 +4,7 @@ requests
 folium
 esda
 libpysal
+fastapi
+uvicorn
+google-genai
+python-dotenv

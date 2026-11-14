@@ -90,6 +90,26 @@
   summary { cursor: pointer; font-weight: 650; }
   footer { padding: 32px 0 60px; font-size: 14px; color: var(--quiet); }
   #chatbot-slot:empty { display: none; }
+  .chat { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .chat h3 { margin: 0; }
+  .chat .hint { margin: 0; font-size: 14px; color: var(--quiet); }
+  .chat-log { height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+              border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 4px; }
+  .msg { max-width: 85%; padding: 9px 13px; border-radius: 10px; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
+  .msg.bot { background: var(--bg); align-self: flex-start; }
+  .msg.user { background: #dceeff; align-self: flex-end; }
+  .msg.wait { color: var(--quiet); font-style: italic; }
+  .chat-suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chat-suggest button { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--line);
+                         border-radius: 999px; background: var(--card); color: var(--ink); cursor: pointer; }
+  .chat-suggest button:hover { border-color: var(--blue); color: var(--blue); }
+  .chat form { display: flex; gap: 8px; }
+  .chat input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 9px 12px;
+                border: 1px solid var(--line); border-radius: 8px; }
+  .chat form button { font: inherit; font-size: 15px; padding: 9px 16px; border: 0; border-radius: 8px;
+                      background: var(--blue); color: #fff; cursor: pointer; }
+  .chat form button:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
@@ -296,7 +316,22 @@
       <li>Add building characteristics (age, size, owner) to the benchmark.</li>
       <li>Track whether gaps close over time after an intervention.</li>
     </ul>
-    <div id="chatbot-slot"></div>
+    <div id="chatbot-slot"><div class="chat" id="chatbot">
+      <h3>Ask the data</h3>
+      <p class="hint">An AI assistant (Google Gemini) that answers from the neighborhood statistics on this page. It can make mistakes, so check key numbers on the map.</p>
+      <div class="chat-log" id="chat-log" aria-live="polite">
+        <div class="msg bot">Hi! Ask me about 311 wait times, "no access" closures or hot spots in any NYC neighborhood.</div>
+      </div>
+      <div class="chat-suggest">
+        <button type="button">Which Bronx neighborhoods wait longest for heat?</button>
+        <button type="button">Why is East Harlem (North) highlighted?</button>
+        <button type="button">What does "extra wait" mean?</button>
+      </div>
+      <form id="chat-form">
+        <input id="chat-question" placeholder="Ask about a neighborhood or borough..." autocomplete="off" maxlength="1000" aria-label="Your question">
+        <button type="submit" id="chat-send">Send</button>
+      </form>
+    </div></div>
   </div>
 </section>
 
@@ -442,6 +477,61 @@ document.querySelectorAll('.story button').forEach(b => b.addEventListener('clic
 ['metric', 'borough', 'hot'].forEach(id => document.getElementById(id).addEventListener('change', () => {
   document.querySelectorAll('.story button').forEach(b => b.classList.remove('on')); draw(true); }));
 setView('gap');
+
+// ---- AI assistant ----
+// Same-origin by default (python app.py / uvicorn). If the backend is hosted elsewhere,
+// set this to its full URL, e.g. 'https://your-backend.example.com/chat'.
+const CHAT_API = '/chat';
+const chatHistory = [];
+const chatLog = document.getElementById('chat-log');
+const chatInput = document.getElementById('chat-question');
+const chatSend = document.getElementById('chat-send');
+
+function addMsg(text, cls) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = text;  // textContent: never render model output as HTML
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return d;
+}
+
+function currentView() {
+  const sel = id => { const s = document.getElementById(id); return s.options[s.selectedIndex].text; };
+  return { measure: sel('metric'), borough: sel('borough'), cluster_outlines: sel('hot') };
+}
+
+async function askChat(question) {
+  question = question.trim();
+  if (!question || chatSend.disabled) return;
+  addMsg(question, 'user');
+  chatInput.value = '';
+  chatSend.disabled = true;
+  const pending = addMsg('Looking at the data...', 'bot wait');
+  try {
+    const res = await fetch(CHAT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, view: currentView(), history: chatHistory.slice(-6) }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { answer } = await res.json();
+    pending.textContent = answer;
+    pending.classList.remove('wait');
+    chatHistory.push({ role: 'user', content: question }, { role: 'assistant', content: answer });
+  } catch (err) {
+    console.error(err);
+    pending.textContent = location.protocol === 'file:' || location.hostname.endsWith('github.io')
+      ? 'The assistant needs its backend. Run "uvicorn app:app" and open http://127.0.0.1:8000.'
+      : 'Sorry, I could not reach the AI assistant. Please try again.';
+  } finally {
+    chatSend.disabled = false;
+    chatInput.focus();
+  }
+}
+
+document.getElementById('chat-form').addEventListener('submit', e => { e.preventDefault(); askChat(chatInput.value); });
+document.querySelectorAll('.chat-suggest button').forEach(b => b.addEventListener('click', () => askChat(b.textContent)));
 </script>
 </body>
 </html>
