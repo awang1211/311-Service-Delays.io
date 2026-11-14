@@ -238,7 +238,11 @@ def add_hotspots(gdf):
     sub = gdf[gdf["reliable"]].copy().reset_index(drop=True)
     w = Queen.from_dataframe(sub, use_index=False, silence_warnings=True)
     w.transform = "r"
-    g = G_Local(sub["median_gap_days"].values, w, star=True, permutations=999, seed=42)
+    # Getis-Ord G needs non-negative values; gaps can be negative, so shift them up.
+    # With row-standardized weights the shift keeps every neighborhood's ranking and z-score direction.
+    y = sub["median_gap_days"].values
+    y = y - y.min() + 1.0
+    g = G_Local(y, w, star=True, permutations=9999, seed=42)
     sub["gi_z"] = g.Zs
     sub["gi_p"] = g.p_sim
     # Benjamini-Hochberg FDR correction across all NTAs tested
@@ -255,6 +259,10 @@ def add_hotspots(gdf):
     gdf = gdf.merge(sub[["nta_code", "gi_z", "gi_p", "sig_fdr", "hotspot"]], on="nta_code", how="left")
     gdf["hotspot"] = gdf["hotspot"].fillna("Too few requests")
     log("Hotspot analysis done: " + gdf["hotspot"].value_counts().to_dict().__str__())
+    if "nta_name" in gdf.columns:
+        for label in ["Hot spot (longer waits)", "Cold spot (shorter waits)"]:
+            names = sorted(gdf.loc[gdf["hotspot"] == label, "nta_name"].dropna())
+            log(f"  {label}: {', '.join(names) if names else 'none'}")
     return gdf
 
 

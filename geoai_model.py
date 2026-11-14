@@ -127,6 +127,7 @@ hs = gdf[gdf["hotspot"].str.contains("spot", na=False)]
 say("\nSignificant clusters on the ML gap (Gi*, FDR-corrected):")
 say(hs[["nta_name", "borough_name", "hotspot"]].to_string(index=False) if len(hs) else "  none")
 
+rel = rel.merge(gdf[["nta_code", "hotspot"]].rename(columns={"hotspot": "hotspot_ml"}), on="nta_code", how="left")
 rel.sort_values("gap_ml", ascending=False).to_csv("output/ml_nta_comparison.csv", index=False)
 with open("output/ml_summary.txt", "w") as f:
     f.write("\n".join(lines))
