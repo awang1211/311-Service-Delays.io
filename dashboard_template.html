@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lat/Long Wait - Where NYC 311 Service Falls Behind</title>
+<title>Who Waits? Mapping Inequity in NYC 311 Service Delays</title>
 <meta name="description" content="Which New York City neighborhoods wait longer than similar 311 requests citywide? An interactive GeoAI analysis of 2024 heat, plumbing and rodent requests.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,13 +90,81 @@
   summary { cursor: pointer; font-weight: 650; }
   footer { padding: 32px 0 60px; font-size: 14px; color: var(--quiet); }
   #chatbot-slot:empty { display: none; }
+#chatbot {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 340px;
+    height: 420px;
+    background: white;
+    z-index: 2000;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px #0003;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+}
+
+#chatbot h3 {
+    margin: 0 0 12px;
+}
+
+#chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bot-message, .user-message {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.bot-message {
+    background: #f0f0f0;
+}
+
+.user-message {
+    background: #dceeff;
+    align-self: flex-end;
+}
+
+.chat-input {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px;
+}
+
+.chat-input button {
+    padding: 9px 12px;
+    cursor: pointer;
+}
+
+  
+
+#chatbot.min { height: auto; }
+#chatbot.min #chat-messages, #chatbot.min .chat-input, #chatbot.min .chat-note { display: none; }
+#chatbot h3 { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+#chatbot .chat-note { font-size: 11px; color: #6b7280; margin: 6px 0 0; }
+@media (max-width: 560px) { #chatbot { width: calc(100% - 24px); right: 12px; bottom: 12px; height: 380px; } }
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="wrap">
-    <b>Lat/Long Wait</b>
+    <b>NYC 311 Service Delays</b>
     <nav aria-label="Sections">
       <a href="#why">Why</a><a href="#data">Data</a><a href="#method">Method</a>
       <a href="#explore">Explore the map</a><a href="#findings">Findings</a><a href="#impact">Impact</a>
@@ -117,9 +185,9 @@
       <div class="card kpi"><div class="num">1 in 4</div><div class="lbl">unique requests closed as "no access"</div></div>
       <div class="card kpi"><div class="num">Upper Manhattan</div><div class="lbl">slow cluster confirmed by both methods</div></div>
     </div>
-    <p class="small quiet" style="margin-top:18px">Team: Anruo Wang and LuClandereine Leger &middot;
+    <p class="small quiet" style="margin-top:18px">Authors: Anruo Wang, LuClandereine Leger &middot;
       <a href="#explore">Jump to the interactive map</a> &middot;
-      <a href="https://github.com/awang1211/311-service-delays.io">Code and data on GitHub</a></p>
+      <a href="https://github.com/lleger0/lleger0.311-Service-Delays.io">Code and data on GitHub</a></p>
   </div>
 </section>
 
@@ -127,9 +195,9 @@
 <section id="why">
   <div class="wrap">
     <div class="kicker">Why it matters</div>
-    <h2>Closed is not the same as resolved</h2>
+    <h2>"Closed" does not mean "solved"</h2>
     <p class="lead">On November 11, 2026, a building partially collapsed at 2625 Bedford Avenue in Flatbush, Brooklyn.
-      In the eight months before, 311 received at least four construction-related complaints at that address. Every one was closed.</p>
+      In the 8 months before, 311 received at least 4 construction-related complaints at that address. Every one was closed.</p>
     <ul class="timeline">
       <li><span class="d">Mar 16</span> &middot; Sidewalk blocked by construction (DOT). Closed a week later: inspector "could not find the problem".</li>
       <li><span class="d">Mar 18</span> &middot; Work contrary to approved plans or permits (DOB). Closed 51 days later: stop work order removed.</li>
@@ -168,7 +236,7 @@
         </table>
       </div>
       <div>
-        <h3 style="margin-top:0">Limitations we account for</h3>
+        <h3 style="margin-top:0">Limitations:</h3>
         <ul>
           <li><b>Closed is not fixed.</b> Closure dates show when a request was closed, not when the problem was solved.</li>
           <li><b>"No access" closures</b> are excluded from wait times and shown as their own map layer, so they cannot make a neighborhood look faster.</li>
@@ -186,12 +254,12 @@
   <div class="wrap">
     <div class="kicker">Method &middot; GeoAI</div>
     <h2>AI learns what normal looks like. GIS shows where reality departs from it.</h2>
-    <p class="lead">Raw averages mislead: heat complaints need an inspection, so a neighborhood that files many of them looks slow even if it is treated fairly.
+    <p class="lead">Raw averages can be misleading. For example, heat complaints usually need an inspection, so a neighborhood that files many of them looks slow even if it is treated fairly.
       So we compare each request with similar requests citywide.</p>
     <div class="flow" role="list">
-      <div class="step" role="listitem"><div class="n">1</div><b>Actual wait</b><br><span class="small quiet">Closed date minus created date, for every request.</span></div>
-      <div class="step" role="listitem"><div class="n">2</div><b>Expected wait</b><br><span class="small quiet">A gradient boosting model learns the citywide norm from complaint type, agency, month, weekday, hour and citywide volume. It never sees location.</span></div>
-      <div class="step key" role="listitem"><div class="n">3</div><b>Gap</b><br><span class="small quiet">Actual minus expected, summarized per neighborhood. Positive means slower than similar requests citywide.</span></div>
+      <div class="step" role="listitem"><div class="n">1</div><b>Actual wait</b><br><span class="small quiet">= Closed date - created date</span></div>
+      <div class="step" role="listitem"><div class="n">2</div><b>Expected wait</b><br><span class="small quiet">A gradient boosting model learns the citywide norm from complaint type, agency, month, weekday, hour and citywide volume, without seeing the specific location.</span></div>
+      <div class="step key" role="listitem"><div class="n">3</div><b>Gap</b><br><span class="small quiet">= Actual Wait - Expected Wait, summarized per neighborhood. Positive means slower than similar requests citywide.</span></div>
       <div class="step" role="listitem"><div class="n">4</div><b>Clusters</b><br><span class="small quiet">Getis-Ord Gi* hot spot analysis with false discovery rate (FDR) correction, so clusters are not just chance.</span></div>
     </div>
     <div class="grid g3" style="margin-top:22px">
@@ -202,7 +270,7 @@
       <div class="card"><b>What the model learned</b><br>Complaint type explains almost all predictable wait time; timing and citywide volume add little.
         What remains is tied to place, which is what the map shows.</div>
     </div>
-    <details><summary>Where the method can fail</summary>
+    <details><summary>Limitations of the method</summary>
       <ul>
         <li>The benchmark does not know building age, size or owner, so part of a gap may reflect harder buildings rather than slower service.</li>
         <li>Overlap between slow areas and demographics does not mean demographics cause delays (ecological fallacy).</li>
@@ -217,7 +285,7 @@
   <div class="wrap">
     <div class="kicker">Explore</div>
     <h2>Interactive map</h2>
-    <p class="lead">Pick a guided view, or choose your own measure and borough. Click any neighborhood for details.</p>
+    <p class="lead">Pick a guided view, or choose your own measure and borough. Click any neighborhood for details in callout box.</p>
     <div class="mapbox">
       <div class="controls">
         <div><b>Guided views</b></div>
@@ -270,7 +338,7 @@
         <div class="callout"><b>4. 29% of requests are repeat reports.</b> When heat fails, many tenants in the same building call on the same day.</div>
       </div>
       <div>
-        <h3 style="margin-top:0">The 10 neighborhoods that wait longest, relative to similar requests</h3>
+        <h3 style="margin-top:0">The 10 neighborhoods with longest wait (relative to similar requests)</h3>
         <p class="small quiet">Neighborhoods with 500+ requests. Median extra wait in days.
           <span class="swatch" style="background:var(--accent)"></span>Machine learning
           <span class="swatch" style="background:#f4a582;margin-left:10px"></span>Simple benchmark</p>
@@ -286,30 +354,173 @@
     <div class="kicker">Impact and next steps</div>
     <h2>A monthly early-warning view for 311</h2>
     <div class="grid g3">
-      <div class="card"><b>Who benefits</b><br>Tenants in neighborhoods that wait longer; agency managers deciding where to send inspectors; council members and community boards asking for accountability.</div>
-      <div class="card"><b>How it would be used</b><br>Flag neighborhoods whose gap is large and persistent, then check staffing, routing and "no access" practices there first.</div>
-      <div class="card"><b>How it is maintained</b><br>Built entirely on open data and open-source Python. Re-running one script each month refreshes every number on this page.</div>
+      <div class="card"><b>Who should use this tool?</b><br>Tenants in neighborhoods that wait longer; agency managers deciding where to send inspectors; council members and community boards asking for accountability.</div>
+      <div class="card"><b>How it would be used?</b><br>Flag neighborhoods whose gap is large and persistent, then check staffing, routing and "no access" practices there first.</div>
+      <div class="card"><b>How it is maintained?</b><br>Built entirely on open data and open-source Python. Re-running one script each month refreshes every number on this page.</div>
     </div>
     <h3>Next steps</h3>
     <ul>
-      <li>Add construction and building-safety complaints (Department of Buildings), the category behind the Flatbush case.</li>
-      <li>Add building characteristics (age, size, owner) to the benchmark.</li>
+      <li>Build an automated warning feature that can send notifications to relevant Departments when a complaint's waiting time is longer than usual.</li>
+      <li>Add construction and building-safety complaints (Department of Buildings).</li>
       <li>Track whether gaps close over time after an intervention.</li>
     </ul>
-    <div id="chatbot-slot"></div>
+    
   </div>
 </section>
+
+
+<div id="chatbot" class="min" aria-label="AI assistant">
+  <h3 onclick="document.getElementById('chatbot').classList.toggle('min')">Ask the data (AI assistant) <span aria-hidden="true">&#8597;</span></h3>
+  <div id="chat-messages">
+    <div class="bot-message">Hi! Ask me about NYC 311 service delays and neighborhood patterns on this map.</div>
+  </div>
+  <div class="chat-input">
+    <input id="chat-question" placeholder="Ask about the map..." aria-label="Question for the AI assistant">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+  <p class="chat-note">Answers use only the neighborhood-level data on this page. No individuals are identified.</p>
+</div>
 
 <footer>
   <div class="wrap">
     Data: <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9">NYC Open Data, 311 Service Requests</a>;
     <a href="https://data.cityofnewyork.us/d/9nt8-h7nd">NYC Department of City Planning, 2020 NTAs</a>; basemap &copy; OpenStreetMap contributors.
-    Methods and code: <a href="https://github.com/awang1211/311-service-delays.io">github.com/awang1211/311-service-delays.io</a>.
-    Patterns describe neighborhoods, not individuals, and are not causal.
+      Methods and code: <a href="https://github.com/lleger0/lleger0.311-Service-Delays.io">github.com/lleger0/lleger0.311-Service-Delays.io</a>.
+      Patterns describe neighborhoods, not individuals, and are not causal.
   </div>
 </footer>
 
 <script>
+
+
+
+const chatHistory = [];
+
+function getMapContext() {
+
+    const borough =
+        document.getElementById("borough").value;
+
+    const metric =
+        document.getElementById("metric").value;
+
+    // Only send neighborhood statistics,
+    // not the large geographic coordinates.
+    const neighborhoods = DATA.features
+        .filter(feature =>
+            borough === "All" ||
+            feature.properties.borough_name === borough
+        )
+        .map(feature => {
+
+            const p = feature.properties;
+
+            return {
+                neighborhood: p.nta_name,
+                borough: p.borough_name,
+                requests: p.n_requests,
+                median_wait_days: p.median_actual_days,
+                extra_wait_days: p.median_gap_days,
+                heat_extra_wait: p.heat_gap,
+                heat_requests: p.heat_n,
+                plumbing_extra_wait: p.plumb_gap,
+                plumbing_requests: p.plumb_n,
+                no_access_percentage: p.no_access_share,
+                slower_than_citywide: p.share_waited_longer,
+                hotspot: p.hotspot
+            };
+        });
+
+    return {
+        year: 2024,
+        selected_borough: borough,
+        selected_metric: metric,
+        neighborhoods: neighborhoods
+    };
+}
+
+
+function addMessage(text, className) {
+
+    const messages =
+        document.getElementById("chat-messages");
+
+    const message = document.createElement("div");
+
+    message.className = className;
+
+    // textContent prevents HTML injection.
+    message.textContent = text;
+
+    messages.appendChild(message);
+    messages.scrollTop = messages.scrollHeight;
+
+    return message;
+}
+
+
+async function sendMessage() {
+
+    const input =
+        document.getElementById("chat-question");
+
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    addMessage(question, "user-message");
+
+    input.value = "";
+
+    const loading = addMessage(
+        "Analyzing the map data...",
+        "bot-message"
+    );
+
+    try {
+
+        const response = await fetch("/chat", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                question: question,
+
+                context: getMapContext(),
+
+                history: chatHistory.slice(-6)
+
+            })
+
+        });
+
+        if (!response.ok) {
+            throw new Error("Chat request failed");
+        }
+
+        const result = await response.json();
+
+        loading.textContent = result.answer;
+
+        chatHistory.push(
+            { role: "user", content: question },
+            { role: "assistant", content: result.answer }
+        );
+
+    } catch (error) {
+
+        loading.textContent =
+            "The AI assistant needs our demo server (app.py) and is offline on this public page. Please ask us during the demo!";
+
+        console.error(error);
+    }
+}
+
 const DATA = __GEOJSON__;
 const MIN_N = 30;
 const CASE = "East Harlem (North)";

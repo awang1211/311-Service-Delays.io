@@ -21,7 +21,7 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return FileResponse("lat_long_wait_map.html")
+    return FileResponse("index.html")
 
 
 @app.post("/chat")
