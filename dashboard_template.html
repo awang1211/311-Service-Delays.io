@@ -110,6 +110,12 @@
   .chat form button { font: inherit; font-size: 15px; padding: 9px 16px; border: 0; border-radius: 8px;
                       background: var(--blue); color: #fff; cursor: pointer; }
   .chat form button:disabled { opacity: .5; cursor: default; }
+  #chatbot { scroll-margin-top: 70px; }
+  .chat-fab { position: fixed; right: 20px; bottom: 20px; z-index: 2500; padding: 12px 18px; border-radius: 999px;
+              background: var(--blue); color: #fff; font-size: 15px; font-weight: 600; text-decoration: none;
+              box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  .chat-fab:hover { filter: brightness(1.1); }
+  .chat-fab.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -119,7 +125,7 @@
     <b>Lat/Long Wait</b>
     <nav aria-label="Sections">
       <a href="#why">Why</a><a href="#data">Data</a><a href="#method">Method</a>
-      <a href="#explore">Explore the map</a><a href="#findings">Findings</a><a href="#impact">Impact</a>
+      <a href="#explore">Explore the map</a><a href="#findings">Findings</a><a href="#impact">Impact</a><a href="#chatbot">Ask AI</a>
     </nav>
   </div>
 </header>
@@ -332,6 +338,7 @@
         <button type="submit" id="chat-send">Send</button>
       </form>
     </div></div>
+    <a href="#chatbot" class="chat-fab" id="chat-fab">Ask the data</a>
   </div>
 </section>
 
@@ -531,6 +538,10 @@ async function askChat(question) {
 }
 
 document.getElementById('chat-form').addEventListener('submit', e => { e.preventDefault(); askChat(chatInput.value); });
+// Hide the floating button while the chat panel itself is on screen.
+new IntersectionObserver(([e]) => document.getElementById('chat-fab').classList.toggle('hidden', e.isIntersecting))
+  .observe(document.getElementById('chatbot'));
+document.getElementById('chat-fab').addEventListener('click', () => setTimeout(() => chatInput.focus({ preventScroll: true }), 400));
 document.querySelectorAll('.chat-suggest button').forEach(b => b.addEventListener('click', () => askChat(b.textContent)));
 </script>
 </body>
