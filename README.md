@@ -3,7 +3,7 @@
 **NYC GeoAI Hackathon 2026 - GeoAI for Social Good track**
 Team: Anruo Wang, LuClandereine Leger
 
-**Live site:** https://lleger0.github.io/lleger0.311-Service-Delays.io/
+**Live map:** (https://lleger0-311-service-delays-io.onrender.com/)
 
 ## The problem
 
