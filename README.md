@@ -63,10 +63,11 @@ pip install -r requirements.txt
 python nyc311_delay_gap.py     # download, clean, compute gaps, hot spots -> output/
 python prepare_map_data.py     # per-complaint-type layer -> output/nta_by_type.geojson
 python make_web_map.py         # interactive map -> output/lat_long_wait_map.html
+python geoai_model.py          # ML benchmark + comparison -> output/ml_summary.txt
 ```
 
 ## Next steps
 
 - Add construction and building-safety complaints (Department of Buildings).
-- Replace the median benchmark with a machine learning model and compare results.
+- Add building characteristics (age, size, owner) to the benchmark.
 - Refresh automatically each month so agencies can track change over time.
