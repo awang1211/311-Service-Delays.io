@@ -46,6 +46,8 @@ if "hotspot" not in nta.columns:
     nta["hotspot"] = "n/a"
 nta["hotspot"] = nta["hotspot"].fillna("n/a")
 geojson = nta.to_json()
+with open("output/map_data.geojson", "w") as f:   # also used by build_dashboard.py
+    f.write(geojson)
 
 # ---------------------------------------------------------------- 3. HTML template (Leaflet)
 html = """<!DOCTYPE html>

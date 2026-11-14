@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lat/Long Wait - Where NYC 311 Service Falls Behind</title>
+<meta name="description" content="Which New York City neighborhoods wait longer than similar 311 requests citywide? An interactive GeoAI analysis of 2024 heat, plumbing and rodent requests.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --ink: #1a1f2b; --quiet: #5b6472; --line: #e3e6eb; --bg: #f7f8fa; --accent: #b2182b;
+          --blue: #2166ac; --card: #ffffff; --max: 1080px; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         color: var(--ink); background: var(--bg); font-size: 17px; line-height: 1.55; }
+  a { color: var(--blue); }
+  header.top { position: sticky; top: 0; z-index: 2000; background: rgba(255,255,255,.96);
+               border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 20px; }
+  header.top b { font-size: 17px; }
+  header.top nav a { margin-left: 14px; font-size: 14px; color: var(--quiet); text-decoration: none; }
+  header.top nav a:hover { color: var(--ink); }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 20px; }
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  section:nth-of-type(even) { background: var(--card); }
+  h1 { font-size: 44px; line-height: 1.12; margin: 0 0 14px; letter-spacing: -.5px; }
+  h2 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; }
+  h3 { font-size: 19px; margin: 24px 0 8px; }
+  .kicker { text-transform: uppercase; letter-spacing: 1.2px; font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .lead { font-size: 21px; color: #2d3440; max-width: 760px; }
+  .quiet { color: var(--quiet); }
+  .small { font-size: 14px; }
+  .grid { display: grid; gap: 16px; }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 860px) { .g4, .g3, .g2 { grid-template-columns: 1fr 1fr; } h1 { font-size: 34px; } }
+  @media (max-width: 560px) { .g4, .g3, .g2 { grid-template-columns: 1fr; } header.top nav { display: none; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  section:nth-of-type(even) .card { background: var(--bg); }
+  .kpi .num { font-size: 36px; font-weight: 750; line-height: 1.1; }
+  .kpi .lbl { font-size: 15px; color: var(--quiet); margin-top: 6px; }
+  .timeline { list-style: none; padding: 0; margin: 20px 0 0; border-left: 3px solid var(--line); }
+  .timeline li { position: relative; padding: 0 0 18px 22px; }
+  .timeline li::before { content: ""; position: absolute; left: -9px; top: 6px; width: 15px; height: 15px; border-radius: 50%;
+                         background: #fff; border: 3px solid #9aa3af; }
+  .timeline li.event::before { background: var(--accent); border-color: var(--accent); }
+  .timeline .d { font-weight: 700; }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+  @media (max-width: 860px) { .flow { grid-template-columns: 1fr 1fr; } }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: relative; }
+  .step .n { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center;
+             font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+  .step.key { border: 2px solid var(--accent); }
+  table.clean { border-collapse: collapse; width: 100%; font-size: 15px; }
+  table.clean th, table.clean td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  table.clean th { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--quiet); }
+  table.clean td.r, table.clean th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  /* map section */
+  .mapbox { display: grid; grid-template-columns: 320px 1fr; gap: 0; border: 1px solid var(--line); border-radius: 12px;
+            overflow: hidden; background: var(--card); margin-top: 20px; }
+  @media (max-width: 860px) { .mapbox { grid-template-columns: 1fr; } }
+  .controls { padding: 18px; border-right: 1px solid var(--line); font-size: 15px; }
+  .controls label { display: block; font-weight: 650; margin: 14px 0 5px; }
+  .controls select { width: 100%; padding: 8px; font-size: 15px; border-radius: 8px; border: 1px solid #c9ced6; background: #fff; }
+  .story { display: grid; gap: 8px; margin-top: 6px; }
+  .story button { text-align: left; padding: 10px 12px; border-radius: 8px; border: 1px solid #c9ced6; background: #fff;
+                  font-size: 15px; cursor: pointer; line-height: 1.3; }
+  .story button:hover, .story button:focus { border-color: var(--ink); outline: none; }
+  .story button.on { border: 2px solid var(--accent); background: #fff5f5; }
+  #map { height: 620px; }
+  .legend { margin-top: 16px; font-size: 14px; }
+  .bar { height: 14px; border-radius: 4px; margin: 6px 0 4px; }
+  .ticks { display: flex; justify-content: space-between; color: var(--quiet); font-size: 13px; }
+  .swatch { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; border-radius: 3px; }
+  .leaflet-popup-content { font-size: 14px; }
+  .leaflet-popup-content table td { padding: 2px 8px 2px 0; }
+  /* bar chart */
+  .bars { margin-top: 12px; }
+  .brow { display: grid; grid-template-columns: 230px 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+  .brow .name { font-size: 15px; text-align: right; }
+  .brow .track { position: relative; }
+  .brow .b1, .brow .b2 { height: 14px; border-radius: 3px; margin: 2px 0; }
+  .brow .b1 { background: var(--accent); }
+  .brow .b2 { background: #f4a582; }
+  .brow .v { display: block; font-size: 12px; color: var(--quiet); margin-top: 2px; }
+  @media (max-width: 560px) { .brow { grid-template-columns: 1fr; } .brow .name { text-align: left; } }
+  .callout { border-left: 4px solid var(--accent); padding: 10px 16px; background: #fff5f5; border-radius: 0 8px 8px 0; margin: 18px 0; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; font-weight: 650; }
+  footer { padding: 32px 0 60px; font-size: 14px; color: var(--quiet); }
+  #chatbot-slot:empty { display: none; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <b>Lat/Long Wait</b>
+    <nav aria-label="Sections">
+      <a href="#why">Why</a><a href="#data">Data</a><a href="#method">Method</a>
+      <a href="#explore">Explore the map</a><a href="#findings">Findings</a><a href="#impact">Impact</a>
+    </nav>
+  </div>
+</header>
+
+<!-- 1. HERO -->
+<section id="top">
+  <div class="wrap">
+    <div class="kicker">NYC GeoAI Hackathon 2026 &middot; GeoAI for Social Good</div>
+    <h1>Who is left waiting<br>when New Yorkers call 311?</h1>
+    <p class="lead">We compared every 2024 heat, plumbing and rodent request with similar requests across the city.
+      Some neighborhoods consistently wait longer, and about one in four requests is closed without anyone getting in.</p>
+    <div class="grid g4" style="margin-top:28px">
+      <div class="card kpi"><div class="num">370,380</div><div class="lbl">311 requests analyzed (2024)</div></div>
+      <div class="card kpi"><div class="num">29%</div><div class="lbl">were repeat reports of the same problem, same building, same day</div></div>
+      <div class="card kpi"><div class="num">1 in 4</div><div class="lbl">unique requests closed as "no access"</div></div>
+      <div class="card kpi"><div class="num">Upper Manhattan</div><div class="lbl">slow cluster confirmed by both methods</div></div>
+    </div>
+    <p class="small quiet" style="margin-top:18px">Team: Anruo Wang and LuClandereine Leger &middot;
+      <a href="#explore">Jump to the interactive map</a> &middot;
+      <a href="https://github.com/awang1211/311-service-delays.io">Code and data on GitHub</a></p>
+  </div>
+</section>
+
+<!-- 2. WHY -->
+<section id="why">
+  <div class="wrap">
+    <div class="kicker">Why it matters</div>
+    <h2>Closed is not the same as resolved</h2>
+    <p class="lead">On November 11, 2026, a building partially collapsed at 2625 Bedford Avenue in Flatbush, Brooklyn.
+      In the eight months before, 311 received at least four construction-related complaints at that address. Every one was closed.</p>
+    <ul class="timeline">
+      <li><span class="d">Mar 16</span> &middot; Sidewalk blocked by construction (DOT). Closed a week later: inspector "could not find the problem".</li>
+      <li><span class="d">Mar 18</span> &middot; Work contrary to approved plans or permits (DOB). Closed 51 days later: stop work order removed.</li>
+      <li><span class="d">Apr 17</span> &middot; After-hours construction noise (DEP). Closed after review.</li>
+      <li><span class="d">Oct 15</span> &middot; Construction noise (DEP). Closed the next day: no violation observed at inspection.</li>
+      <li class="event"><span class="d">Nov 11</span> &middot; Partial building collapse.</li>
+    </ul>
+    <p class="quiet small">We do not claim that 311 caused this collapse; the cause is under investigation. It shows why we look beyond
+      "was the request closed?" to "how long did it take, compared with similar requests, and where?"</p>
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card"><b>Where</b><br>All five boroughs, analyzed by 262 Neighborhood Tabulation Areas (NTAs).</div>
+      <div class="card"><b>Who it is for</b><br>311 and agency managers (HPD, DOHMH), City Council members and community boards.</div>
+      <div class="card"><b>The question</b><br>Which neighborhoods wait longer than similar requests citywide, and do those neighborhoods cluster?</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. DATA -->
+<section id="data">
+  <div class="wrap">
+    <div class="kicker">Data</div>
+    <h2>From 370,380 requests to a fair comparison</h2>
+    <p class="lead">NYC Open Data 311 Service Requests for 2024 (Heat/Hot Water, Plumbing, Rodent), joined to 2020 NTA boundaries.</p>
+    <div class="grid g2" style="margin-top:12px">
+      <div>
+        <table class="clean" aria-label="Data preparation steps">
+          <thead><tr><th>Step</th><th class="r">Requests</th></tr></thead>
+          <tbody>
+            <tr><td>Raw requests</td><td class="r">370,380</td></tr>
+            <tr><td>Drop open requests, missing locations, invalid times</td><td class="r">366,586</td></tr>
+            <tr><td>Remove repeat reports (same building, type, day)</td><td class="r">&minus;106,750</td></tr>
+            <tr><td><b>Unique requests</b></td><td class="r"><b>259,836</b></td></tr>
+            <tr><td>Closed as "no access" (mapped separately)</td><td class="r">62,911</td></tr>
+            <tr><td>Used for wait-time analysis</td><td class="r">196,925</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 style="margin-top:0">Limitations we account for</h3>
+        <ul>
+          <li><b>Closed is not fixed.</b> Closure dates show when a request was closed, not when the problem was solved.</li>
+          <li><b>"No access" closures</b> are excluded from wait times and shown as their own map layer, so they cannot make a neighborhood look faster.</li>
+          <li><b>Rodent requests</b> mostly close the same day, so their wait is not meaningful. The map focuses on heat and plumbing.</li>
+          <li><b>Buildings</b> are identified by identical coordinates (311 locations are geocoded to the address).</li>
+          <li><b>Privacy:</b> results are shown only at neighborhood level. No individuals are identified.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. METHOD -->
+<section id="method">
+  <div class="wrap">
+    <div class="kicker">Method &middot; GeoAI</div>
+    <h2>AI learns what normal looks like. GIS shows where reality departs from it.</h2>
+    <p class="lead">Raw averages mislead: heat complaints need an inspection, so a neighborhood that files many of them looks slow even if it is treated fairly.
+      So we compare each request with similar requests citywide.</p>
+    <div class="flow" role="list">
+      <div class="step" role="listitem"><div class="n">1</div><b>Actual wait</b><br><span class="small quiet">Closed date minus created date, for every request.</span></div>
+      <div class="step" role="listitem"><div class="n">2</div><b>Expected wait</b><br><span class="small quiet">A gradient boosting model learns the citywide norm from complaint type, agency, month, weekday, hour and citywide volume. It never sees location.</span></div>
+      <div class="step key" role="listitem"><div class="n">3</div><b>Gap</b><br><span class="small quiet">Actual minus expected, summarized per neighborhood. Positive means slower than similar requests citywide.</span></div>
+      <div class="step" role="listitem"><div class="n">4</div><b>Clusters</b><br><span class="small quiet">Getis-Ord Gi* hot spot analysis with false discovery rate (FDR) correction, so clusters are not just chance.</span></div>
+    </div>
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card"><b>Evidence it works</b><br>On requests it never saw, the model is slightly more accurate than a simple median benchmark
+        (median error 0.74 vs 0.80 days).</div>
+      <div class="card"><b>Robust to the method</b><br>The model and the simple benchmark agree on <b>9 of the 10</b> slowest neighborhoods.
+        East Harlem (North) ranks 3rd of 197 under both.</div>
+      <div class="card"><b>What the model learned</b><br>Complaint type explains almost all predictable wait time; timing and citywide volume add little.
+        What remains is tied to place, which is what the map shows.</div>
+    </div>
+    <details><summary>Where the method can fail</summary>
+      <ul>
+        <li>The benchmark does not know building age, size or owner, so part of a gap may reflect harder buildings rather than slower service.</li>
+        <li>Overlap between slow areas and demographics does not mean demographics cause delays (ecological fallacy).</li>
+        <li>Closure time is an imperfect measure of service, especially when requests are closed without access.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- 5. EXPLORE -->
+<section id="explore">
+  <div class="wrap">
+    <div class="kicker">Explore</div>
+    <h2>Interactive map</h2>
+    <p class="lead">Pick a guided view, or choose your own measure and borough. Click any neighborhood for details.</p>
+    <div class="mapbox">
+      <div class="controls">
+        <div><b>Guided views</b></div>
+        <div class="story" role="group" aria-label="Guided views">
+          <button data-view="gap">1. Where do requests wait longer than similar requests?</button>
+          <button data-view="noaccess">2. Where are requests closed without anyone getting in?</button>
+          <button data-view="case">3. Case study: East Harlem (North) plumbing</button>
+        </div>
+        <label for="metric">Measure</label>
+        <select id="metric">
+          <option value="median_gap_days">Extra wait vs similar requests: all types</option>
+          <option value="heat_gap">Extra wait vs similar requests: heat and hot water</option>
+          <option value="plumb_gap">Extra wait vs similar requests: plumbing</option>
+          <option value="no_access_share">Share closed as "no access"</option>
+          <option value="median_actual_days">Typical actual wait (days)</option>
+        </select>
+        <label for="borough">Borough</label>
+        <select id="borough">
+          <option value="All">All boroughs</option>
+          <option>Manhattan</option><option>Bronx</option><option>Brooklyn</option>
+          <option>Queens</option><option>Staten Island</option>
+        </select>
+        <label for="hot">Outline significant clusters</label>
+        <select id="hot">
+          <option value="ml">Machine learning method</option>
+          <option value="base">Simple benchmark method</option>
+          <option value="off">Hide outlines</option>
+        </select>
+        <div class="legend" id="legend" aria-live="polite"></div>
+      </div>
+      <div id="map" role="application" aria-label="Map of New York City neighborhoods colored by the selected measure"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. FINDINGS -->
+<section id="findings">
+  <div class="wrap">
+    <div class="kicker">Findings</div>
+    <h2>What the data shows</h2>
+    <div class="grid g2">
+      <div>
+        <div class="callout"><b>1. Upper Manhattan waits longer than similar requests citywide.</b>
+          It is the slow cluster that survives correction for chance under both methods (East Harlem, Harlem, Manhattanville-West Harlem). The machine learning method also flags East New York-New Lots in Brooklyn.</div>
+        <div class="callout"><b>2. East Harlem (North) stands out most.</b> Requests wait a median of 0.59 days longer than similar requests, and 65% are slower than the citywide norm.
+          The gap holds (+0.61 days) after removing its 10 busiest buildings, so it is not driven by a few problem properties.
+          Plumbing requests wait 2.3 days longer.</div>
+        <div class="callout"><b>3. About 1 in 4 unique requests is closed as "no access".</b> The share is highest in lower Manhattan:
+          51% in Chinatown-Two Bridges, around 40% in the East Village, Lower East Side and Greenwich Village.</div>
+        <div class="callout"><b>4. 29% of requests are repeat reports.</b> When heat fails, many tenants in the same building call on the same day.</div>
+      </div>
+      <div>
+        <h3 style="margin-top:0">The 10 neighborhoods that wait longest, relative to similar requests</h3>
+        <p class="small quiet">Neighborhoods with 500+ requests. Median extra wait in days.
+          <span class="swatch" style="background:var(--accent)"></span>Machine learning
+          <span class="swatch" style="background:#f4a582;margin-left:10px"></span>Simple benchmark</p>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. IMPACT -->
+<section id="impact">
+  <div class="wrap">
+    <div class="kicker">Impact and next steps</div>
+    <h2>A monthly early-warning view for 311</h2>
+    <div class="grid g3">
+      <div class="card"><b>Who benefits</b><br>Tenants in neighborhoods that wait longer; agency managers deciding where to send inspectors; council members and community boards asking for accountability.</div>
+      <div class="card"><b>How it would be used</b><br>Flag neighborhoods whose gap is large and persistent, then check staffing, routing and "no access" practices there first.</div>
+      <div class="card"><b>How it is maintained</b><br>Built entirely on open data and open-source Python. Re-running one script each month refreshes every number on this page.</div>
+    </div>
+    <h3>Next steps</h3>
+    <ul>
+      <li>Add construction and building-safety complaints (Department of Buildings), the category behind the Flatbush case.</li>
+      <li>Add building characteristics (age, size, owner) to the benchmark.</li>
+      <li>Track whether gaps close over time after an intervention.</li>
+    </ul>
+    <div id="chatbot-slot"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Data: <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9">NYC Open Data, 311 Service Requests</a>;
+    <a href="https://data.cityofnewyork.us/d/9nt8-h7nd">NYC Department of City Planning, 2020 NTAs</a>; basemap &copy; OpenStreetMap contributors.
+    Methods and code: <a href="https://github.com/awang1211/311-service-delays.io">github.com/awang1211/311-service-delays.io</a>.
+    Patterns describe neighborhoods, not individuals, and are not causal.
+  </div>
+</footer>
+
+<script>
+const DATA = __GEOJSON__;
+const MIN_N = 30;
+const CASE = "East Harlem (North)";
+const ML_HOT = ["East Harlem (North)", "East New York-New Lots", "Harlem (North)", "Harlem (South)", "Manhattanville-West Harlem"];
+const ML_COLD = ["South Jamaica", "South Ozone Park", "Springfield Gardens (North)-Rochdale Village",
+                 "Todt Hill-Emerson Hill-Lighthouse Hill-Manor Heights", "West New Brighton-Silver Lake-Grymes Hill"];
+const TOP10 = [
+  ["East Harlem (North)", 0.56, 0.59], ["Kew Gardens Hills", 0.51, 0.28], ["Lower East Side", 0.47, 0.37],
+  ["Harlem (North)", 0.41, 0.31], ["East Harlem (South)", 0.39, 0.32], ["East New York-City Line", 0.33, 0.21],
+  ["Manhattanville-West Harlem", 0.33, 0.22], ["Harlem (South)", 0.29, 0.19], ["Bushwick (West)", 0.29, 0.25],
+  ["East New York-New Lots", 0.28, 0.17]];
+
+// ---- bar chart
+(function () {
+  const max = Math.max(...TOP10.map(r => Math.max(r[1], r[2])));
+  document.getElementById('bars').innerHTML = TOP10.map(r => `
+    <div class="brow"><div class="name">${r[0]}</div><div class="track">
+      <div class="b1" style="width:${(r[1] / max * 85).toFixed(1)}%" title="Machine learning: +${r[1].toFixed(2)} days"></div>
+      <div class="b2" style="width:${(r[2] / max * 85).toFixed(1)}%" title="Simple benchmark: +${r[2].toFixed(2)} days"></div>
+      <span class="v">+${r[1].toFixed(2)} / +${r[2].toFixed(2)} days</span></div></div>`).join('');
+})();
+
+// ---- map
+const map = L.map('map', {scrollWheelZoom: false}).setView([40.72, -73.94], 10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+
+const METRICS = {
+  median_gap_days: {type: 'div', lo: -0.6, hi: 0.6, n: 'n_requests', unit: 'days',
+                    label: 'Extra wait compared with similar requests citywide'},
+  heat_gap:        {type: 'div', lo: -0.6, hi: 0.6, n: 'heat_n', unit: 'days',
+                    label: 'Heat and hot water: extra wait vs similar requests'},
+  plumb_gap:       {type: 'div', lo: -3, hi: 3, n: 'plumb_n', unit: 'days',
+                    label: 'Plumbing: extra wait vs similar requests'},
+  no_access_share: {type: 'seq', lo: 0.1, hi: 0.5, n: 'n_requests', unit: '%',
+                    label: 'Share of requests closed as "no access"'},
+  median_actual_days: {type: 'seq', lo: 1, hi: 3, n: 'n_requests', unit: 'days',
+                    label: 'Typical actual wait (median days)'}
+};
+const BLUE = [33,102,172], WHITE = [247,247,247], RED = [178,24,43], PALE = [254,240,217], DARK = [179,0,0];
+const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+const mix = (c1, c2, t) => `rgb(${lerp(c1[0],c2[0],t)},${lerp(c1[1],c2[1],t)},${lerp(c1[2],c2[2],t)})`;
+function color(v, m) {
+  if (v === null || v === undefined || isNaN(v)) return '#d9d9d9';
+  const t = Math.max(0, Math.min(1, (v - m.lo) / (m.hi - m.lo)));
+  if (m.type === 'div') return t < 0.5 ? mix(BLUE, WHITE, t * 2) : mix(WHITE, RED, (t - 0.5) * 2);
+  return mix(PALE, DARK, t);
+}
+function fmt(v, unit) {
+  if (v === null || v === undefined || isNaN(v)) return 'not enough data';
+  if (unit === '%') return Math.round(v * 100) + '%';
+  return (v > 0 ? '+' : '') + Number(v).toFixed(2) + ' days';
+}
+function cluster(p, mode) {
+  if (mode === 'ml') return ML_HOT.includes(p.nta_name) ? 'hot' : (ML_COLD.includes(p.nta_name) ? 'cold' : null);
+  if (mode === 'base') return p.hotspot === 'Hot spot (longer waits)' ? 'hot' : (p.hotspot === 'Cold spot (shorter waits)' ? 'cold' : null);
+  return null;
+}
+function plain(p) {
+  const g = p.median_gap_days;
+  if (g === null || g === undefined || (p.n_requests || 0) < MIN_N) return 'Too few requests to compare.';
+  if (Math.abs(g) < 0.05) return 'Requests here wait about as long as similar requests citywide.';
+  const hrs = Math.round(Math.abs(g) * 24);
+  return g > 0 ? `Requests here typically wait about ${hrs} hours longer than similar requests citywide.`
+               : `Requests here typically wait about ${hrs} hours less than similar requests citywide.`;
+}
+
+let layer, byName = {};
+function draw(fit) {
+  const key = document.getElementById('metric').value;
+  const boro = document.getElementById('borough').value;
+  const mode = document.getElementById('hot').value;
+  const m = METRICS[key];
+  if (layer) map.removeLayer(layer);
+  byName = {};
+  layer = L.geoJSON(DATA, {
+    filter: f => boro === 'All' || f.properties.borough_name === boro,
+    style: f => {
+      const p = f.properties, ok = (p[m.n] || 0) >= MIN_N, c = cluster(p, mode);
+      return {fillColor: ok ? color(p[key], m) : '#d9d9d9', fillOpacity: 0.82,
+              color: c === 'hot' ? '#000' : (c === 'cold' ? '#2166ac' : '#8a8f98'),
+              weight: c ? 3 : 0.5, dashArray: c === 'cold' ? '5 4' : null};
+    },
+    onEachFeature: (f, l) => {
+      const p = f.properties, c = cluster(p, mode);
+      byName[p.nta_name] = l;
+      l.bindTooltip(p.nta_name, {sticky: true});
+      l.bindPopup(`<b style="font-size:16px">${p.nta_name}</b><br><span style="color:#5b6472">${p.borough_name}</span>
+        <p style="margin:8px 0">${plain(p)}</p><table>
+        <tr><td>Extra wait, all types</td><td><b>${fmt(p.median_gap_days, 'days')}</b></td></tr>
+        <tr><td>Extra wait, heat</td><td>${fmt(p.heat_gap, 'days')}</td></tr>
+        <tr><td>Extra wait, plumbing</td><td>${fmt(p.plumb_gap, 'days')}</td></tr>
+        <tr><td>Slower than citywide norm</td><td>${fmt(p.share_waited_longer, '%')} of requests</td></tr>
+        <tr><td>Closed as "no access"</td><td>${fmt(p.no_access_share, '%')}</td></tr>
+        <tr><td>Unique requests</td><td>${p.n_requests ?? 'n/a'}</td></tr>
+        <tr><td>Cluster</td><td>${c === 'hot' ? 'Part of a slow cluster' : (c === 'cold' ? 'Part of a fast cluster' : 'No significant cluster')}</td></tr>
+        </table>`);
+      l.on('mouseover', () => l.setStyle({weight: 3, color: '#1a1f2b'}));
+      l.on('mouseout', () => layer.resetStyle(l));
+    }
+  }).addTo(map);
+  if (fit) {
+    if (boro !== 'All' && layer.getLayers().length) map.fitBounds(layer.getBounds());
+    else map.setView([40.72, -73.94], 10);
+  }
+  legend(m, mode);
+}
+function legend(m, mode) {
+  const bar = m.type === 'div' ? `linear-gradient(to right, ${mix(BLUE,BLUE,0)}, ${mix(WHITE,WHITE,0)}, ${mix(RED,RED,0)})`
+                               : `linear-gradient(to right, ${mix(PALE,PALE,0)}, ${mix(DARK,DARK,0)})`;
+  const lo = m.unit === '%' ? Math.round(m.lo * 100) + '%' : m.lo, hi = m.unit === '%' ? Math.round(m.hi * 100) + '%+' : m.hi + '+';
+  const ends = m.type === 'div' ? [`Faster (${lo} days)`, 'Same as citywide', `Slower (${hi} days)`] : [lo, '', hi];
+  document.getElementById('legend').innerHTML = `<b>${m.label}</b><div class="bar" style="background:${bar}"></div>
+    <div class="ticks"><span>${ends[0]}</span><span>${ends[1]}</span><span>${ends[2]}</span></div>
+    <p class="small quiet" style="margin:10px 0 0">
+    ${mode !== 'off' ? '<span class="swatch" style="border:3px solid #000"></span>Slow cluster &nbsp; <span class="swatch" style="border:3px dashed #2166ac"></span>Fast cluster<br>' : ''}
+    <span class="swatch" style="background:#d9d9d9"></span>Fewer than ${MIN_N} requests</p>`;
+}
+function setView(v) {
+  document.querySelectorAll('.story button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  const metric = document.getElementById('metric'), boro = document.getElementById('borough'), hot = document.getElementById('hot');
+  if (v === 'gap') { metric.value = 'median_gap_days'; boro.value = 'All'; hot.value = 'ml'; draw(true); }
+  if (v === 'noaccess') { metric.value = 'no_access_share'; boro.value = 'Manhattan'; hot.value = 'off'; draw(true); }
+  if (v === 'case') {
+    metric.value = 'plumb_gap'; boro.value = 'Manhattan'; hot.value = 'ml'; draw(false);
+    const l = byName[CASE]; if (l) { map.fitBounds(l.getBounds(), {maxZoom: 14}); l.openPopup(); }
+  }
+}
+document.querySelectorAll('.story button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+['metric', 'borough', 'hot'].forEach(id => document.getElementById(id).addEventListener('change', () => {
+  document.querySelectorAll('.story button').forEach(b => b.classList.remove('on')); draw(true); }));
+setView('gap');
+</script>
+</body>
+</html>
