@@ -220,7 +220,7 @@
   <div class="wrap">
     <div class="kicker">Data</div>
     <h2>From 370,380 requests to a fair comparison</h2>
-    <p class="lead">NYC Open Data 311 Service Requests for 2024 (Heat/Hot Water, Plumbing, Rodent), joined to 2020 NTA boundaries.</p>
+    <p class="lead">NYC Open Data 311 Service Requests for 2024 (Heat/Hot Water, Plumbing, Rodent), joined to 2020 NTA boundaries, plus U.S. Census ACS 2020-2024 5-year estimates (income, race/ethnicity, renter share).</p>
     <div class="grid g2" style="margin-top:12px">
       <div>
         <table class="clean" aria-label="Data preparation steps">
@@ -336,6 +336,11 @@
         <div class="callout"><b>3. About 1 in 4 unique requests is closed as "no access".</b> The share is highest in lower Manhattan:
           51% in Chinatown-Two Bridges, around 40% in the East Village, Lower East Side and Greenwich Village.</div>
         <div class="callout"><b>4. 29% of requests are repeat reports.</b> When heat fails, many tenants in the same building call on the same day.</div>
+        <div class="callout"><b>5. Renter-heavy neighborhoods tend to wait longer.</b> Across 197 neighborhoods, the share of renter households
+          goes with longer extra waits under both methods (rank correlation +0.47 with the machine learning benchmark, +0.13 with the simple one).
+          "No access" closures are more common where a larger share of residents is Black (+0.21).
+          Links with income and other groups change with the method, so we draw no conclusion from them.
+          These are neighborhood-level patterns, not causes.</div>
       </div>
       <div>
         <h3 style="margin-top:0">The 10 neighborhoods with longest wait (relative to similar requests)</h3>
@@ -356,7 +361,7 @@
     <div class="grid g3">
       <div class="card"><b>Who should use this tool?</b><br>Tenants in neighborhoods that wait longer; agency managers deciding where to send inspectors; council members and community boards asking for accountability.</div>
       <div class="card"><b>How it would be used?</b><br>Flag neighborhoods whose gap is large and persistent, then check staffing, routing and "no access" practices there first.</div>
-      <div class="card"><b>How it is maintained?</b><br>Built entirely on open data and open-source Python. Re-running one script each month refreshes every number on this page.</div>
+      <div class="card"><b>How it is maintained?</b><br>Built entirely on open data and open-source Python. Re-running one script each month refreshes every number on this page. 311 data updates daily, so the same pipeline can run on a schedule. This prototype uses 2024, the latest complete year, because wait times are only reliable once requests are closed.</div>
     </div>
     <h3>Next steps</h3>
     <ul>
