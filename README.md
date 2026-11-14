@@ -1,4 +1,4 @@
-# Lat/Long Wait: Mapping Where NYC 311 Service Falls Behind
+# Who Waits? Mapping Inequity in NYC 311 Service Delays
 
 **NYC GeoAI Hackathon 2026 - GeoAI for Social Good track**
 Team: Anruo Wang, LuClandereine Leger
